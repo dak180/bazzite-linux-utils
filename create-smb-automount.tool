@@ -1,4 +1,5 @@
 #!/usr/bin/env bash
+# shellcheck disable=SC2155,2086
 
 # Global Vars
 shareName=""
@@ -196,7 +197,7 @@ if [[ ! "${usrInput}" = smb://* ]]; then
 	echo "Not valid input" > "/dev/stderr"
 	exit 1
 fi
-inputSan "${usrInput}" || { echo "Not valid input" > "/dev/stderr"; exit 1 }
+inputSan "${usrInput}" || { echo "Not valid input" > "/dev/stderr"; exit 1; }
 
 # User validation
 cat > "/dev/stderr" << EOF
