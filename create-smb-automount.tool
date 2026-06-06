@@ -1,9 +1,11 @@
 #!/usr/bin/env bash
-# shellcheck disable=SC2155,2086
+# shellcheck disable=SC2155,2086,2001
 
 # Global Vars
 shareName=""
+mountPoint=""
 sharePath=""
+absolutePath=""
 serverName=""
 userName=""
 credsFile=""
@@ -32,7 +34,7 @@ Wants=network-online.target systemd-resolved.service
 What=//${serverName}/${sharePath}
 
 # Local mount point where the share will be attached.
-Where=/mnt/${shareName}
+Where=${absolutePath}
 
 # Specifies the filesystem type.
 Type=cifs
@@ -40,12 +42,12 @@ Type=cifs
 
 # Mount options:
 Options=rw,uid=${uUID},gid=${uGID},nofail,iocharset=utf8,nounix,noserverino,soft,credentials=${credsFile},vers=3.0
-# 'rw'          -> Read/write access.
-# 'uid=1000'    -> Ensures that the mounted files are owned by user ID 1000 (your main user).
-# 'gid=1000'    -> Ensures group ownership by group ID 1000.
-# 'nofail'      -> Prevents boot failure if the SMB share is unavailable.
-# 'credentials=/var/home/<username>/.smb/credentials' -> Specifies the file storing the SMB username & password.
-# 'vers=3.0'    -> Forces SMB version 3.0 for security and performance.
+# 'rw'           Read/write access.
+# 'uid=1000'     Ensures that the mounted files are owned by user ID 1000 (your main user).
+# 'gid=1000'     Ensures group ownership by group ID 1000.
+# 'nofail'       Prevents boot failure if the SMB share is unavailable.
+# 'credentials=/var/home/<username>/.smb/credentials'  Specifies the file storing the SMB username & password.
+# 'vers=3.0'     Forces SMB version 3.0 for security and performance.
 
 # Sets a timeout to stop trying if the mount hangs.
 TimeoutSec=30
@@ -68,7 +70,7 @@ function automountFile() {
 Description=Automount ${shareName} on ${serverName}
 
 [Automount]
-Where=/mnt/${shareName}
+Where=${absolutePath}
 TimeoutIdleSec=300
 
 [Install]
@@ -88,7 +90,7 @@ password=
 
 EOF
 
-	clear
+	clear -x
 	cat > "/dev/stderr" << EOF
 We are about open credentials file for you to enter the password for the server.
 EOF
@@ -108,7 +110,9 @@ function selinuxCheck() {
 		sudo restorecon -v "/etc/systemd/system/${shareName}.mount"
 	fi
 	sudo systemctl daemon-reload
+#	sudo systemctl enable "${shareName}.mount"
 	sudo systemctl enable "${shareName}.automount"
+	sudo systemctl start "${shareName}.automount"
 }
 
 function inputSan() {
@@ -137,8 +141,11 @@ function inputSan() {
 		serverName="${userTest}"
 	fi
 	sharePath="${input#*/}"
-	shareName="${userName}-${serverName}-$(sed -e 's:/:-:g' -e 's:[^A-Za-z0-9._-]:_:g'  <<< "${sharePath}")"
 	credsFile="${HOME}/.smb/${userName}-${serverName}"
+
+	mountPoint="$(sed -e 's:[^A-Za-z0-9._]:_:g' <<< "${userName}_${serverName}_${sharePath}")"
+	absolutePath="$(${RESOLVER} "/mnt/${mountPoint}")"
+	shareName="$(systemd-escape -p "${absolutePath}")"
 
 	if [ -z "${userName}" ] || [ -z "${serverName}" ] || [ -z "${sharePath}" ]; then
 		return 1
@@ -156,6 +163,8 @@ sudo
 dirname
 chmod
 chown
+systemd-escape
+systemctl
 )
 for command in "${commands[@]}"; do
 	if ! command -v "${command}" &> /dev/null; then
@@ -163,6 +172,15 @@ for command in "${commands[@]}"; do
 		exit 100
 	fi
 done
+if command -v realpath &> /dev/null; then
+    RESOLVER="realpath"
+elif command -v readlink &> /dev/null && readlink -f / &> /dev/null; then
+    # Test if readlink supports -f by checking root
+    RESOLVER="readlink -f"
+else
+    echo "Error: Neither realpath nor readlink -f is available." >&2
+    exit 100
+fi
 
 
 sudo -v # ask for sudo password up-front
@@ -201,15 +219,14 @@ inputSan "${usrInput}" || { echo "Not valid input" > "/dev/stderr"; exit 1; }
 
 # User validation
 cat > "/dev/stderr" << EOF
-Based on your input we will be conecting to ${serverName} as ${userName} using the password that will be stored in ${credsFile} to map the share ${sharePath} to /mnt/${shareName}.
+Based on your input we will be conecting to ${serverName} as ${userName} using the password that will be stored in ${credsFile} to map the share ${sharePath} to /mnt/${mountPoint}.
 Does all this look correct?
 EOF
 
 if ! read -n1 -rsp $'Press any key to continue or ctrl+c to exit.\n'; then
 		exit 1
 	fi
-
-sudo mkdir -p "/mnt/${shareName}"
+# mkdir -p "/mnt/${mountPoint}"
 
 credFile
 
