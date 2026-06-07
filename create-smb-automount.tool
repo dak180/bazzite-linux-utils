@@ -141,10 +141,15 @@ function inputSan() {
 		serverName="${userTest}"
 	fi
 	sharePath="${input#*/}"
-	credsFile="${HOME}/.smb/${userName}-${serverName}"
+	credsFile="${HOME}/.smb/$(sed -e 's:[^A-Za-z0-9._]:_:g' <<< "${userName}-${serverName}")"
+
+	if [ "${RESOLVER}" = "realpath" ]; then
+	# make the mount point if required
+	mkdir -p "/mnt/${mountPoint}"
+	fi
+	absolutePath="$(${RESOLVER} "/mnt/${mountPoint}")"
 
 	mountPoint="$(sed -e 's:[^A-Za-z0-9._]:_:g' <<< "${userName}_${serverName}_${sharePath}")"
-	absolutePath="$(${RESOLVER} "/mnt/${mountPoint}")"
 	shareName="$(systemd-escape -p "${absolutePath}")"
 
 	if [ -z "${userName}" ] || [ -z "${serverName}" ] || [ -z "${sharePath}" ]; then
@@ -173,20 +178,25 @@ readlink
 )
 for command in "${commands[@]}"; do
 	if ! command -v "${command}" &> /dev/null; then
+		if [ "${command}" = "readlink" ] && command -v "realpath" &> /dev/null; then
+			RESOLVER="realpath"
+			continue
+		fi
 		echo "${command} is missing, please install" >&2
 		exit 100
+	elif [ "${command}" = "readlink" ]; then
+		if readlink -f / &> /dev/null; then
+			RESOLVER="readlink -f"
+			continue
+		elif command -v "realpath" &> /dev/null; then
+			RESOLVER="realpath"
+			continue
+		else
+			echo "${command} is missing, please install" >&2
+			exit 100
+		fi
 	fi
 done
-if command -v realpath &> /dev/null; then
-    RESOLVER="realpath"
-elif command -v readlink &> /dev/null && readlink -f / &> /dev/null; then
-    # Test if readlink supports -f by checking root
-    RESOLVER="readlink -f"
-else
-    echo "Error: Neither realpath nor readlink -f is available." >&2
-    exit 100
-fi
-
 
 sudo -v # ask for sudo password up-front
 while true; do
@@ -231,7 +241,7 @@ EOF
 if ! read -n1 -rsp $'Press any key to continue or ctrl+c to exit.\n'; then
 		exit 1
 	fi
-# mkdir -p "/mnt/${mountPoint}"
+
 
 credFile
 
