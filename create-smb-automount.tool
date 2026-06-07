@@ -2,6 +2,7 @@
 # shellcheck disable=SC2155,2086,2001
 
 # Global Vars
+guiName=""
 shareName=""
 mountPoint=""
 mountPath=""
@@ -42,7 +43,7 @@ Type=cifs
 # This is necessary for mounting a Windows SMB/CIFS share.
 
 # Mount options:
-Options=rw,uid=${uUID},gid=${uGID},nofail,iocharset=utf8,nounix,noserverino,soft,credentials=${credsFile},vers=3
+Options=rw,uid=${uUID},gid=${uGID},nofail,iocharset=utf8,nounix,noserverino,soft,credentials=${credsFile},x-gvfs-name=${guiName},vers=3
 # 'rw'           Read/write access.
 # 'uid=1000'     Ensures that the mounted files are owned by user ID 1000 (your main user).
 # 'gid=1000'     Ensures group ownership by group ID 1000.
@@ -59,7 +60,6 @@ TimeoutSec=30
 WantedBy=multi-user.target
 # Mounts the share when the system reaches multi-user mode (normal operation).
 EOF
-	# x-gvfs-name= may be useful later
 
 	sudo chown root:root "/etc/systemd/system/${shareName}.mount"
 	sudo chmod u=rw,g=r,o=r "/etc/systemd/system/${shareName}.mount"
@@ -124,6 +124,10 @@ function inputSan() {
 		echo "No share name found" >&2
 		return 1
 	fi
+	sharePath="${input#*/}"
+
+	: "${guiName:=${sharePath}}"
+	guiName="$(echo -n "${guiName}" | jq -sRr @uri)"
 
 	mountPath="$(sed -e 's:/*$::' <<< "${mountPath}")"
 	if [ -z "${mountPath}" ]; then
@@ -149,7 +153,6 @@ function inputSan() {
 		: "${userName:="$(id -un)"}"
 		serverName="${userTest}"
 	fi
-	sharePath="${input#*/}"
 	credsFile="${HOME}/.smb/$(sed -e 's:[^A-Za-z0-9._]:_:g' <<< "${userName}-${serverName}")"
 
 	if [ "${RESOLVER}" = "realpath" ]; then
@@ -184,6 +187,7 @@ tee
 mkdir
 cat
 readlink
+jq
 )
 for command in "${commands[@]}"; do
 	if ! command -v "${command}" &> /dev/null; then
@@ -245,6 +249,11 @@ Enter the mount path you want to use in the following format:
 /path/to/use
 EOF
 read -rp $'[/media]> ' mountPath
+
+cat > "/dev/stderr" << EOF
+Enter the name you want the sare to use in the gui
+EOF
+read -rp $'> ' guiName
 
 
 inputSan "${usrInput}" || { echo "Not valid input" > "/dev/stderr"; exit 1; }
