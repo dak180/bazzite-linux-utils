@@ -165,6 +165,11 @@ chmod
 chown
 systemd-escape
 systemctl
+id
+tee
+mkdir
+cat
+readlink
 )
 for command in "${commands[@]}"; do
 	if ! command -v "${command}" &> /dev/null; then
