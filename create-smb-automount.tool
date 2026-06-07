@@ -4,6 +4,7 @@
 # Global Vars
 shareName=""
 mountPoint=""
+mountPath=""
 sharePath=""
 absolutePath=""
 serverName=""
@@ -117,10 +118,18 @@ function selinuxCheck() {
 
 function inputSan() {
 	local input="${1#smb://}"
-	input="$(sed -e "s:^[[:blank:]]*::" -e "s:[[:blank:]]*$::" -e 's:/*$::' <<< "${input}")"
 
+	input="$(sed -e "s:^[[:blank:]]*::" -e "s:[[:space:]]*$::" -e 's:/*$::' <<< "${input}")"
 	if [[ "${input}" != */* ]]; then
 		echo "No share name found" >&2
+		return 1
+	fi
+
+	mountPath="$(sed -e 's:/*$::' <<< "${mountPath}")"
+	if [ -z "${mountPath}" ]; then
+		: "${mountPath:=/media}"
+	elif [ ! -d "${mountPath}" ]; then
+		echo "Not a valid mount path" >&2
 		return 1
 	fi
 
@@ -145,9 +154,9 @@ function inputSan() {
 
 	if [ "${RESOLVER}" = "realpath" ]; then
 	# make the mount point if required
-	mkdir -p "/mnt/${mountPoint}"
+	mkdir -p "${mountPath}/${mountPoint}"
 	fi
-	absolutePath="$(${RESOLVER} "/mnt/${mountPoint}")"
+	absolutePath="$(${RESOLVER} "${mountPath}/${mountPoint}")"
 
 	mountPoint="$(sed -e 's:[^A-Za-z0-9._]:_:g' <<< "${userName}_${serverName}_${sharePath}")"
 	shareName="$(systemd-escape -p "${absolutePath}")"
@@ -222,7 +231,7 @@ uGID="$(id -g)"
 
 # Start interactive prompts
 cat > "/dev/stderr" << EOF
-List the share you want to connect to in the following format:
+Enter the share you want to connect to in the following format:
 smb://[user@]server_or_ipv4/share
 EOF
 read -rp $'> ' usrInput
@@ -230,6 +239,14 @@ if [[ ! "${usrInput}" = smb://* ]]; then
 	echo "Not valid input" > "/dev/stderr"
 	exit 1
 fi
+
+cat > "/dev/stderr" << EOF
+Enter the mount path you want to use in the following format:
+/path/to/use
+EOF
+read -rp $'[/media]> ' mountPath
+
+
 inputSan "${usrInput}" || { echo "Not valid input" > "/dev/stderr"; exit 1; }
 
 # User validation

@@ -24,7 +24,7 @@ smb://[user@]server/share
 - SMB credentials file under `~/.smb/`
 - Enables automounting via systemd
 - Prevents boot failure if the share is unavailable (`nofail`)
-- Makes the mount path under `/mnt/`
+- Makes the mount path under `/media/` by default
 - SELinux compatibility via `restorecon` when enforcing
 
 ---
