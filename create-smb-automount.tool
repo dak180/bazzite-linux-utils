@@ -117,7 +117,7 @@ function selinuxCheck() {
 
 function inputSan() {
 	local input="${1#smb://}"
-	input="$(sed -e "s:^[[:blank:]]*::" -e "s:[[:blank:]]*$::" -e 's:/$::' <<< "${input}")"
+	input="$(sed -e "s:^[[:blank:]]*::" -e "s:[[:blank:]]*$::" -e 's:/*$::' <<< "${input}")"
 
 	if [[ "${input}" != */* ]]; then
 		echo "No share name found" >&2
