@@ -41,13 +41,13 @@ Type=cifs
 # This is necessary for mounting a Windows SMB/CIFS share.
 
 # Mount options:
-Options=rw,uid=${uUID},gid=${uGID},nofail,iocharset=utf8,nounix,noserverino,soft,credentials=${credsFile},vers=3.0
+Options=rw,uid=${uUID},gid=${uGID},nofail,iocharset=utf8,nounix,noserverino,soft,credentials=${credsFile},vers=3
 # 'rw'           Read/write access.
 # 'uid=1000'     Ensures that the mounted files are owned by user ID 1000 (your main user).
 # 'gid=1000'     Ensures group ownership by group ID 1000.
 # 'nofail'       Prevents boot failure if the SMB share is unavailable.
 # 'credentials=/var/home/<username>/.smb/credentials'  Specifies the file storing the SMB username & password.
-# 'vers=3.0'     Forces SMB version 3.0 for security and performance.
+# 'vers=3'     Forces SMB version 3.0 or later for security and performance.
 
 # Sets a timeout to stop trying if the mount hangs.
 TimeoutSec=30
