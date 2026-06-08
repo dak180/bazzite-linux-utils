@@ -4,7 +4,7 @@
 
 ### Overview
 
-This script creates a systemd `.mount` and `.automount` pair for an SMB/CIFS network share. It accepts an SMB URL, generates systemd unit files, creates a credentials file, and enables automounting through systemd.
+This script creates a systemd `.mount` and `.automount` pair for an SMB/CIFS network share. It accepts an SMB URL and uses it to generates systemd unit files, creates a credentials file, and enables automounting through systemd.
 
 It is intended for Linux systems using `systemd` with CIFS support.
 
@@ -16,9 +16,15 @@ It is intended for Linux systems using `systemd` with CIFS support.
 ```
 smb://[user@]server/share
 ```
+Examples:
+```
+smb://fileserver01/shared
+smb://alice@192.168.1.50/media
+```
 - Supports optional username in the URL (`user@server`)
 - Defaults to the current local system username if none is provided
-- Generates:
+
+Generates:
 - systemd `.mount` unit
 - systemd `.automount` unit
 - SMB credentials file under `~/.smb/`
@@ -29,9 +35,7 @@ smb://[user@]server/share
 
 ---
 
-### Requirements
-
-#### System requirements
+### System requirements
 
 - systemd-based Linux system
 - CIFS kernel support (`mount.cifs`)
@@ -46,13 +50,4 @@ Run the script:
 
 ```bash
 ./create-smb-automount.tool
-```
-You will be prompted for an SMB path in the form:
-```
-smb://[user@]server/share
-```
-Examples:
-```
-smb://fileserver01/shared
-smb://alice@192.168.1.50/media
 ```
