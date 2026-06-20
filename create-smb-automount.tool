@@ -129,12 +129,13 @@ function inputSan() {
 	: "${guiName:=${sharePath}}"
 	guiName="$(echo -n "${guiName}" | jq -sRr @uri)"
 
-	mountPath="$(sed -e 's:/*$::' <<< "${mountPath}")"
 	if [ -z "${mountPath}" ]; then
 		: "${mountPath:=/media}"
 	elif [ ! -d "${mountPath}" ]; then
 		echo "Not a valid mount path" >&2
 		return 1
+	else
+		mountPath="$(sed -e 's:/*$::' <<< "${mountPath}")"
 	fi
 
 
@@ -155,13 +156,14 @@ function inputSan() {
 	fi
 	credsFile="${HOME}/.smb/$(sed -e 's:[^A-Za-z0-9._]:_:g' <<< "${userName}-${serverName}")"
 
+	mountPoint="$(sed -e 's:[^A-Za-z0-9._]:_:g' <<< "${userName}_${serverName}_${sharePath}")"
+
 	if [ "${RESOLVER}" = "realpath" ]; then
 	# make the mount point if required
 	mkdir -p "${mountPath}/${mountPoint}"
 	fi
 	absolutePath="$(${RESOLVER} "${mountPath}/${mountPoint}")"
 
-	mountPoint="$(sed -e 's:[^A-Za-z0-9._]:_:g' <<< "${userName}_${serverName}_${sharePath}")"
 	shareName="$(systemd-escape -p "${absolutePath}")"
 
 	if [ -z "${userName}" ] || [ -z "${serverName}" ] || [ -z "${sharePath}" ]; then
@@ -251,7 +253,7 @@ EOF
 read -rp $'[/media]> ' mountPath
 
 cat > "/dev/stderr" << EOF
-Enter the name you want the sare to use in the gui
+Enter the name you want the share to use in the gui
 EOF
 read -rp $'> ' guiName
 
@@ -260,7 +262,7 @@ inputSan "${usrInput}" || { echo "Not valid input" > "/dev/stderr"; exit 1; }
 
 # User validation
 cat > "/dev/stderr" << EOF
-Based on your input we will be conecting to ${serverName} as ${userName} using the password that will be stored in ${credsFile} to map the share ${sharePath} to /mnt/${mountPoint}.
+Based on your input we will be connecting to ${serverName} as ${userName} using the password that will be stored in ${credsFile} to map the share ${sharePath} to ${mountPath}/${mountPoint}.
 Does all this look correct?
 EOF
 
